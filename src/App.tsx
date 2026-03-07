@@ -166,7 +166,7 @@ export default function App() {
 
   const handleSessionComplete = () => {
     setIsTimerRunning(false);
-    const points = selectedDuration < 0.1 ? 5 : Math.floor(selectedDuration / 15) * POINTS_PER_15_MIN;
+    const points = Math.floor(selectedDuration / 15) * POINTS_PER_15_MIN;
     const newSession: StudySession = {
       id: Date.now().toString(),
       durationMinutes: selectedDuration,
@@ -180,7 +180,7 @@ export default function App() {
       points: prev.points + points,
       sessions: [newSession, ...prev.sessions],
     }));
-    alert(`Chúc mừng! Bạn đã hoàn thành ${selectedDuration < 0.1 ? '1 giây' : selectedDuration + ' phút'} học môn ${currentSubject} và nhận được ${points} điểm!`);
+    alert(`Chúc mừng! Bạn đã hoàn thành ${selectedDuration} phút học môn ${currentSubject} và nhận được ${points} điểm!`);
     setCurrentSubject('');
   };
 
@@ -539,7 +539,7 @@ export default function App() {
                 <div className="mt-12 flex justify-center gap-4 relative z-10">
                   {!isTimerRunning ? (
                     <div className="grid grid-cols-3 gap-4 w-full max-w-lg">
-                      {[1/60, 1, 15, 30, 45, 60, 90, 120].map((mins) => (
+                      {[15, 30, 45, 60, 90, 120].map((mins) => (
                         <button
                           key={mins}
                           onClick={() => startTimer(mins)}
@@ -551,9 +551,9 @@ export default function App() {
                               : "opacity-40 cursor-not-allowed bg-slate-50 border-transparent"
                           )}
                         >
-                          {mins < 0.1 ? '1s' : `${mins}p`} 
+                          {mins}p 
                           <span className="text-[#ff8fa3] text-xs block mt-1">
-                            +{mins < 0.1 ? 5 : Math.floor(mins/15)}đ
+                            +{Math.floor(mins/15)}đ
                           </span>
                         </button>
                       ))}
