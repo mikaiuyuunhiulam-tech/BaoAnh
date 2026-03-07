@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Comfortaa:wght@300;400;500;600;700&family=Inter:wght@400;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Comfortaa", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  --font-inter: "Inter", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-[#fff5f7] text-[#5c4b4e] font-sans;
+    background-image: radial-gradient(#ffd1dc 0.5px, transparent 0.5px);
+    background-size: 20px 20px;
+  }
+}
+
+@layer components {
+  .coquette-card {
+    @apply bg-white/80 backdrop-blur-sm border border-[#ffdae3] rounded-[2rem] shadow-[0_8px_30px_rgb(255,209,220,0.3)];
+  }
+  
+  .coquette-button {
+    @apply bg-[#ffb7c5] hover:bg-[#ffa4b6] text-white font-bold transition-all active:scale-95 shadow-[0_4px_15px_rgba(255,183,197,0.4)];
+  }
+
+  .coquette-input {
+    @apply bg-white/50 border border-[#ffdae3] focus:border-[#ffb7c5] focus:ring-2 focus:ring-[#ffb7c5]/20 outline-none transition-all;
+  }
+}
