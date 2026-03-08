@@ -31,6 +31,12 @@ export interface Exam {
   targetScore?: string;
 }
 
+export interface RewardHistory {
+  id: string;
+  rewardText: string;
+  timestamp: number;
+}
+
 export interface UserState {
   points: number;
   sessions: StudySession[];
@@ -38,4 +44,5 @@ export interface UserState {
   dailyGoal: DailyGoal;
   homeworks: Homework[];
   exams: Exam[];
+  rewardHistory: RewardHistory[];
 }

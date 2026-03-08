@@ -77,6 +77,7 @@ export default function App() {
       dailyGoal: { minutes: 120 },
       homeworks: [],
       exams: [],
+      rewardHistory: [],
     };
     
     if (saved) {
@@ -90,6 +91,7 @@ export default function App() {
           dailyGoal: { minutes: parsed?.dailyGoal?.minutes || defaultState.dailyGoal.minutes },
           homeworks: Array.isArray(parsed?.homeworks) ? parsed.homeworks : defaultState.homeworks,
           exams: Array.isArray(parsed?.exams) ? parsed.exams : defaultState.exams,
+          rewardHistory: Array.isArray(parsed?.rewardHistory) ? parsed.rewardHistory : defaultState.rewardHistory,
           points: typeof parsed?.points === 'number' ? parsed.points : defaultState.points,
         };
       } catch (e) {
@@ -318,7 +320,18 @@ export default function App() {
       const index = Math.floor(((360 - finalAngle) % 360) / segmentAngle);
       const result = state.rewards[index];
       setSpinResult(result);
-      setState(prev => ({ ...prev, points: prev.points - 1 }));
+      setState(prev => ({ 
+        ...prev, 
+        points: prev.points - 1,
+        rewardHistory: [
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            rewardText: result.text,
+            timestamp: Date.now()
+          },
+          ...prev.rewardHistory
+        ].slice(0, 50)
+      }));
     }, 4000);
   };
 
@@ -1070,6 +1083,37 @@ export default function App() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="w-full max-w-md mt-10">
+                  <div className="bg-gradient-to-br from-[#fff0f3] to-white p-6 rounded-[2rem] border border-[#ffdae3] shadow-sm mb-6">
+                    <div className="flex items-center gap-2 text-[#ff8fa3] text-sm font-bold mb-4">
+                      <History className="w-4 h-4" />
+                      Lịch sử phần thưởng
+                    </div>
+                    
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                      {state.rewardHistory.length === 0 ? (
+                        <p className="text-center py-6 text-[#d1b8bc] italic text-sm">Chưa có phần thưởng nào được ghi lại... ✨</p>
+                      ) : (
+                        state.rewardHistory.map((history) => (
+                          <div key={history.id} className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-[#ffdae3]/50">
+                            <span className="text-sm font-bold text-[#5c4b4e]">{history.rewardText}</span>
+                            <span className="text-[10px] text-[#d1b8bc]">{new Date(history.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    
+                    <div className="mt-6 pt-4 border-t border-[#ffdae3]/50">
+                      <div className="flex items-start gap-3 bg-[#fff0f3]/50 p-3 rounded-xl border border-[#ffdae3]/30">
+                        <Sparkles className="w-4 h-4 text-[#ff8fa3] shrink-0 mt-0.5" />
+                        <p className="text-xs text-[#8a7075] italic leading-relaxed">
+                          Nàng ơi, hãy chăm chỉ học tập thêm để tích lũy thật nhiều điểm và nhận thêm những phần quà ngọt ngào nhé! Mỗi phút giây nỗ lực đều xứng đáng được trân trọng đó. 🌸✨
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
