@@ -117,6 +117,7 @@ export default function App() {
   const [newExamSubject, setNewExamSubject] = useState('');
   const [newExamDate, setNewExamDate] = useState('');
   const [newExamTarget, setNewExamTarget] = useState('');
+  const [expandedHomeworkId, setExpandedHomeworkId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('study-rewards-state', JSON.stringify(state));
@@ -149,7 +150,7 @@ export default function App() {
     if (isTimerRunning && isPaused) {
       interval = setInterval(() => {
         setPauseDuration((prev) => {
-          if (prev + 1 >= 30) {
+          if (prev + 1 >= 1800) {
             setShowPauseWarning(true);
           }
           return prev + 1;
@@ -349,7 +350,74 @@ export default function App() {
     });
   };
 
+  const isOverdue = (deadline?: string, completed?: boolean) => {
+    if (!deadline || completed) return false;
+    const deadlineDate = new Date(deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return deadlineDate < today;
+  };
+
+  const isDueToday = (deadline?: string, completed?: boolean) => {
+    if (!deadline || completed) return false;
+    const deadlineDate = new Date(deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dDate = new Date(deadlineDate);
+    dDate.setHours(0, 0, 0, 0);
+    return dDate.getTime() === today.getTime();
+  };
+
   const stats = getDailyStats();
+  const hasUrgentHomework = state.homeworks.some(hw => isOverdue(hw.deadline, hw.completed) || isDueToday(hw.deadline, hw.completed));
+  const isExamOverdueWithoutScore = (exam: Exam) => {
+    if (exam.score) return false;
+    const examDate = new Date(exam.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return examDate < today;
+  };
+  const hasOverdueExam = state.exams.some(isExamOverdueWithoutScore);
+
+  const getSubjectAverages = () => {
+    const subjectScores: Record<string, number[]> = {};
+    state.exams.forEach(exam => {
+      if (exam.score) {
+        const score = parseFloat(exam.score);
+        if (!isNaN(score)) {
+          if (!subjectScores[exam.subject]) {
+            subjectScores[exam.subject] = [];
+          }
+          subjectScores[exam.subject].push(score);
+        }
+      }
+    });
+
+    return Object.entries(subjectScores).map(([subject, scores]) => ({
+      subject,
+      average: (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)
+    }));
+  };
+
+  const subjectAverages = getSubjectAverages();
+
+  const getHomeworkStats = () => {
+    if (state.homeworks.length === 0) return null;
+    const completed = state.homeworks.filter(h => h.completed).length;
+    const total = state.homeworks.length;
+    const rate = Math.round((completed / total) * 100);
+    
+    let message = "";
+    if (rate === 100) message = "Tuyệt vời quá nàng ơi! Tất cả bài tập đã hoàn thành rồi. ✨";
+    else if (rate >= 80) message = "Nàng đang làm rất tốt, chỉ còn một chút nữa thôi là xong hết rồi! 🌸";
+    else if (rate >= 50) message = "Cố gắng lên nào, nàng đã đi được nửa chặng đường rồi đó! 🎀";
+    else if (rate > 0) message = "Bắt đầu thôi nào, mình tin nàng sẽ hoàn thành sớm thôi! ✨";
+    else message = "Đừng để bài tập dồn lại nhé, hãy bắt đầu làm ngay thôi nàng ơi! 🌷";
+
+    return { rate, message, completed, total };
+  };
+
+  const homeworkStats = getHomeworkStats();
   const todayStats = stats[stats.length - 1];
   const [quoteIndex, setQuoteIndex] = useState(0);
 
@@ -601,6 +669,39 @@ export default function App() {
             >
               <section className="coquette-card p-10">
                 <h2 className="text-3xl font-serif italic font-bold text-[#5c4b4e] mb-8">Bài Tập Về Nhà</h2>
+                
+                {homeworkStats && (
+                  <div className="bg-gradient-to-br from-[#fff0f3] to-white p-6 rounded-[2rem] border border-[#ffdae3] shadow-sm mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-[#ff8fa3] text-sm font-bold flex items-center gap-2">
+                        <Trophy className="w-4 h-4" />
+                        Tỉ lệ hoàn thành bài tập
+                      </div>
+                      <div className="text-2xl font-serif font-bold text-[#ff8fa3]">
+                        {homeworkStats.rate}%
+                      </div>
+                    </div>
+                    
+                    <div className="w-full bg-[#ffdae3]/30 h-3 rounded-full overflow-hidden mb-4">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${homeworkStats.rate}%` }}
+                        className="h-full bg-gradient-to-r from-[#ffb7c5] to-[#ff8fa3]"
+                      />
+                    </div>
+                    
+                    <div className="flex items-start gap-3 bg-white/50 p-3 rounded-xl border border-[#ffdae3]/50">
+                      <Sparkles className="w-4 h-4 text-[#ff8fa3] shrink-0 mt-0.5" />
+                      <p className="text-xs text-[#8a7075] italic leading-relaxed">
+                        {homeworkStats.message}
+                        <span className="block mt-1 font-bold text-[#ff8fa3]">
+                          ({homeworkStats.completed}/{homeworkStats.total} bài tập)
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 mb-8">
                   <input
                     type="text"
@@ -627,31 +728,87 @@ export default function App() {
                       Hôm nay chưa có bài tập nào đâu nàng ơi... ✨
                     </div>
                   ) : (
-                    state.homeworks.map((hw) => (
-                      <div key={hw.id} className="flex items-center justify-between p-4 bg-white/60 rounded-2xl border border-[#ffdae3] group hover:shadow-sm transition-all">
-                        <div className="flex items-center gap-4 flex-1">
-                          <button onClick={() => toggleHomework(hw.id)} className="text-[#ff8fa3] shrink-0">
-                            {hw.completed ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
-                          </button>
-                          <div className="flex flex-col">
-                            <span className={cn(
-                              "font-medium transition-all",
-                              hw.completed ? "text-[#d1b8bc] line-through" : "text-[#5c4b4e]"
-                            )}>
-                              {hw.task}
-                            </span>
-                            {hw.deadline && (
-                              <span className="text-[10px] text-[#ff8fa3] font-bold uppercase tracking-wider mt-0.5">
-                                Hạn: {new Date(hw.deadline).toLocaleDateString('vi-VN')}
-                              </span>
+                    state.homeworks.map((hw) => {
+                      const overdue = isOverdue(hw.deadline, hw.completed);
+                      const dueToday = isDueToday(hw.deadline, hw.completed);
+                      return (
+                        <div key={hw.id} className="flex flex-col gap-2">
+                          <div 
+                            onClick={() => setExpandedHomeworkId(expandedHomeworkId === hw.id ? null : hw.id)}
+                            className="flex items-center justify-between p-4 bg-white/60 rounded-2xl border border-[#ffdae3] group hover:shadow-sm transition-all cursor-pointer relative"
+                          >
+                            {(overdue || dueToday) && (
+                              <div className={cn(
+                                "absolute -top-1 -left-1 w-3 h-3 rounded-full border-2 border-white shadow-sm z-10",
+                                overdue ? "bg-red-500" : "bg-orange-400"
+                              )} />
                             )}
+                            <div className="flex items-center gap-4 flex-1">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleHomework(hw.id);
+                                }} 
+                                className="text-[#ff8fa3] shrink-0"
+                              >
+                                {hw.completed ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                              </button>
+                              <div className="flex flex-col">
+                                <span className={cn(
+                                  "font-medium transition-all",
+                                  hw.completed ? "text-[#d1b8bc] line-through" : "text-[#5c4b4e]"
+                                )}>
+                                  {hw.task}
+                                </span>
+                                {hw.deadline && (
+                                  <span className={cn(
+                                    "text-[10px] font-bold uppercase tracking-wider mt-0.5",
+                                    overdue ? "text-red-500" : dueToday ? "text-orange-500" : "text-[#ff8fa3]"
+                                  )}>
+                                    Hạn: {new Date(hw.deadline).toLocaleDateString('vi-VN')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteHomework(hw.id);
+                              }} 
+                              className="text-[#d1b8bc] hover:text-[#ff8fa3] transition-all p-2 shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
+                          
+                          {overdue && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="px-4 overflow-hidden"
+                            >
+                              <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2 text-red-600 text-xs font-medium">
+                                <AlertCircle className="w-4 h-4" />
+                                Bài tập này đã quá hạn rồi nàng ơi! Hãy mau chóng hoàn thành nhé ✨
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {dueToday && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="px-4 overflow-hidden"
+                            >
+                              <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex items-center gap-2 text-orange-600 text-xs font-medium">
+                                <TimerIcon className="w-4 h-4" />
+                                Bài tập này có hạn là hôm nay đó! Nàng nhớ hoàn thành trong ngày nhé ✨
+                              </div>
+                            </motion.div>
+                          )}
                         </div>
-                        <button onClick={() => deleteHomework(hw.id)} className="text-[#d1b8bc] hover:text-[#ff8fa3] transition-all p-2 shrink-0">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </section>
@@ -695,6 +852,23 @@ export default function App() {
                 </div>
 
                 <div className="space-y-4">
+                  {subjectAverages.length > 0 && (
+                    <div className="bg-gradient-to-br from-[#fff0f3] to-white p-6 rounded-[2rem] border border-[#ffdae3] shadow-sm mb-8">
+                      <div className="text-[#ff8fa3] text-sm font-bold mb-4 flex items-center gap-2">
+                        <PieChart className="w-4 h-4" />
+                        Điểm trung bình các môn
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {subjectAverages.map((avg) => (
+                          <div key={avg.subject} className="flex flex-col p-3 bg-white rounded-2xl border border-[#ffdae3] items-center">
+                            <span className="text-[10px] text-[#8a7075] font-bold uppercase">{avg.subject}</span>
+                            <span className="text-xl font-serif font-bold text-[#ff8fa3]">{avg.average}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {state.exams.length === 0 ? (
                     <div className="text-center py-10 text-[#d1b8bc] italic">
                       Chưa có lịch thi nào được ghi lại...
@@ -702,8 +876,12 @@ export default function App() {
                   ) : (
                     state.exams.map((exam) => {
                       const analysis = getExamAnalysis(exam);
+                      const overdueNoScore = isExamOverdueWithoutScore(exam);
                       return (
-                        <div key={exam.id} className="flex flex-col p-5 bg-white/60 rounded-2xl border border-[#ffdae3] gap-4">
+                        <div key={exam.id} className="flex flex-col p-5 bg-white/60 rounded-2xl border border-[#ffdae3] gap-4 relative">
+                          {overdueNoScore && (
+                            <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm z-10" />
+                          )}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex items-center gap-4">
                               <div className="bg-[#fff0f3] p-3 rounded-full">
@@ -741,6 +919,21 @@ export default function App() {
                             </div>
                           </div>
                           
+                          {overdueNoScore && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="bg-red-50 p-4 rounded-xl border border-red-100 text-sm"
+                            >
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-red-600 font-medium">
+                                  Nàng ơi, bài thi môn <span className="font-bold">{exam.subject}</span> đã qua ngày rồi mà chưa thấy nàng nhập điểm nè. Mau chóng cập nhật để mình theo dõi quá trình học tập của nàng nhé! ✨
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+
                           {analysis && (
                             <motion.div 
                               initial={{ opacity: 0, height: 0 }}
@@ -1047,12 +1240,14 @@ export default function App() {
           onClick={() => setActiveTab('homework')} 
           icon={<BookOpen />} 
           label="Bài tập về nhà" 
+          hasBadge={hasUrgentHomework}
         />
         <NavButton 
           active={activeTab === 'exams'} 
           onClick={() => setActiveTab('exams')} 
           icon={<GraduationCap />} 
           label="Bài thi" 
+          hasBadge={hasOverdueExam}
         />
 
         <NavButton 
@@ -1078,15 +1273,18 @@ export default function App() {
   );
 }
 
-function NavButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
+function NavButton({ active, onClick, icon, label, hasBadge }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, hasBadge?: boolean }) {
   return (
     <button 
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center gap-1 transition-all duration-300 min-w-[64px]",
+        "flex flex-col items-center gap-1 transition-all duration-300 min-w-[64px] relative",
         active ? "text-[#ff8fa3] scale-105 opacity-100" : "text-[#d1b8bc] hover:text-[#ffb7c5] opacity-60"
       )}
     >
+      {hasBadge && (
+        <div className="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white z-20 shadow-sm" />
+      )}
       <div className={cn(
         "p-2 rounded-2xl transition-colors",
         active && "bg-[#fff0f3]"
