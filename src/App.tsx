@@ -297,6 +297,35 @@ export default function App() {
     setTimeLeft(0);
   };
 
+  const saveAndStopTimer = () => {
+    const elapsedSeconds = (selectedDuration * 60) - timeLeft;
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    
+    if (elapsedMinutes < 1) return;
+
+    setIsTimerRunning(false);
+    setIsPaused(false);
+    setTimeLeft(0);
+
+    const points = Math.floor(elapsedMinutes / 15) * POINTS_PER_15_MIN;
+    const newSession: StudySession = {
+      id: Date.now().toString(),
+      durationMinutes: elapsedMinutes,
+      pointsEarned: points,
+      timestamp: Date.now(),
+      subject: currentSubject,
+    };
+
+    setState((prev) => ({
+      ...prev,
+      points: prev.points + points,
+      sessions: [newSession, ...prev.sessions],
+    }));
+    
+    alert(`Nàng đã dừng học sớm, nhưng mình vẫn lưu lại ${elapsedMinutes} phút nỗ lực của nàng môn ${currentSubject} đó! Nàng nhận được ${points} điểm nhé ✨`);
+    setCurrentSubject('');
+  };
+
   const spinWheel = () => {
     if (state.points < 1 || isSpinning) return;
 
@@ -657,6 +686,16 @@ export default function App() {
                           </>
                         )}
                       </button>
+                      
+                      {isTimerRunning && (selectedDuration * 60 - timeLeft) >= 60 && (
+                        <button
+                          onClick={saveAndStopTimer}
+                          className="flex-1 bg-[#fff0f3] border-2 border-[#ffdae3] text-[#ff8fa3] hover:bg-[#ffdae3] px-8 py-5 rounded-full font-bold flex items-center justify-center gap-3 shadow-sm transition-all active:scale-95"
+                        >
+                          <Trophy className="w-5 h-5" />
+                          Dừng và lưu
+                        </button>
+                      )}
                       
                       <button
                         onClick={cancelTimer}
